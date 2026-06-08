@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Luggage Tag — Deepak Krishna</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --accent:  #e8c97e;
+      --accent2: #a78bfa;
+      --text-primary:   #f0ede8;
+      --text-secondary: rgba(240,237,232,0.6);
+    }
+    html, body { min-height: 100%; width: 100%; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #0a2a2a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Two layered canvases ── */
+    #bgCanvas, #rainCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #bgCanvas   { z-index: 0; }
+    #rainCanvas { z-index: 1; pointer-events: none; }
+
+    /* ── Card ── */
+    .card-wrap {
+      position: relative;
+      z-index: 10;
+      width: min(420px, 92vw);
+      animation: cardEntry 1s cubic-bezier(0.16,1,0.3,1) both;
+      transition: transform 0.12s ease-out;
+    }
+    @keyframes cardEntry {
+      from { opacity:0; transform:translateY(40px) scale(0.96); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+
+    .tag-hole {
+      display: flex; justify-content: center;
+      margin-bottom: -1px; position: relative; z-index: 2;
+    }
+    .tag-hole-inner {
+      width:28px; height:28px;
+      background:rgba(255,255,255,0.10);
+      border:2px solid rgba(255,255,255,0.22);
+      border-radius:50%;
+      box-shadow:0 0 0 4px rgba(255,255,255,0.04);
+      backdrop-filter:blur(8px);
+    }
+
+    .card {
+      background: rgba(10, 60, 58, 0.72);
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 24px;
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      box-shadow:
+        0 4px 80px rgba(0,0,0,0.55),
+        0 1px 0 rgba(255,255,255,0.12) inset,
+        0 -1px 0 rgba(0,0,0,0.3) inset;
+      overflow: hidden;
+      position: relative;
+    }
+    .card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:50%;
+      background:linear-gradient(180deg,rgba(255,255,255,0.06) 0%,transparent 100%);
+      border-radius:24px 24px 0 0; pointer-events:none;
+    }
+
+    .card-header {
+      padding: 28px 28px 0;
+      display:flex; flex-direction:column; align-items:center; gap:14px;
+    }
+    .luggage-label {
+      font-size:10px; font-weight:500;
+      letter-spacing:0.22em; text-transform:uppercase;
+      color:var(--accent); opacity:0.85;
+      background:rgba(232,201,126,0.1);
+      border:1px solid rgba(232,201,126,0.22);
+      padding:4px 14px; border-radius:20px;
+    }
+    .avatar-ring {
+      width:88px; height:88px; border-radius:50%; padding:3px;
+      background:linear-gradient(135deg, #0de8d8, #12b5ae, #06d6c2, #0a8a85, #0de8d8);
+      background-size:300% 300%;
+      animation:ringRotate 4s linear infinite; flex-shrink:0;
+    }
+    @keyframes ringRotate {
+      from { background-position:0% 50%; }
+      to   { background-position:300% 50%; }
+    }
+    .avatar-inner {
+      width:100%; height:100%; border-radius:50%;
+      background:rgba(20,15,40,0.85);
+      border:2px solid rgba(20,15,40,0.5);
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .avatar-inner img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+
+    .name-block { text-align:center; }
+    .name {
+      font-family:'JetBrains Mono', monospace;
+      font-size:22px; font-weight:700;
+      color:var(--text-primary); letter-spacing:0.02em; line-height:1.1;
+    }
+    .name-sub {
+      font-size:11px; color:var(--text-secondary);
+      letter-spacing:0.12em; text-transform:uppercase; margin-top:4px;
+    }
+
+    .divider {
+      margin:20px 28px 0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12) 30%,rgba(232,201,126,0.3) 50%,rgba(255,255,255,0.12) 70%,transparent);
+    }
+
+    .info-list { padding:20px 24px 28px; display:flex; flex-direction:column; gap:6px; }
+    .info-row {
+      display:flex; align-items:center; gap:14px;
+      padding:12px 14px; border-radius:14px;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.07);
+      transition:background 0.2s, border-color 0.2s, transform 0.15s;
+      text-decoration:none; cursor:pointer;
+    }
+    .info-row:hover {
+      background:rgba(255,255,255,0.09);
+      border-color:rgba(255,255,255,0.18);
+      transform:translateX(3px);
+    }
+    .info-row:active { transform:translateX(3px) scale(0.99); }
+
+    .icon-wrap {
+      width:38px; height:38px; border-radius:10px;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .icon-wrap svg { width:18px; height:18px; }
+    .icon-address  { background:rgba(99,102,241,0.2);   } .icon-address  svg { color:#a5b4fc; }
+    .icon-phone    { background:rgba(34,197,94,0.18);   } .icon-phone    svg { color:#86efac; }
+    .icon-phone2   { background:rgba(20,184,166,0.18);  } .icon-phone2   svg { color:#5eead4; }
+    .icon-whatsapp { background:rgba(37,211,102,0.18);  } .icon-whatsapp svg { color:#25d366; }
+    .icon-email    { background:rgba(232,201,126,0.18); } .icon-email    svg { color:#e8c97e; }
+
+    .info-text { flex:1; min-width:0; }
+    .info-label {
+      font-size:10px; letter-spacing:0.12em;
+      text-transform:uppercase; color:var(--text-secondary); margin-bottom:2px;
+    }
+    .info-value {
+      font-size:13.5px; font-weight:500; color:var(--text-primary);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .info-action { color:rgba(255,255,255,0.22); flex-shrink:0; }
+    .info-action svg { width:12px; height:12px; }
+
+    .card-footer {
+      padding:0 28px 22px; text-align:center; font-size:10px;
+      color:rgba(255,255,255,0.2); letter-spacing:0.1em; text-transform:uppercase;
+    }
+    .card-footer span { color:rgba(232,201,126,0.45); }
+  </style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<canvas id="rainCanvas"></canvas>
+
+<div class="card-wrap" id="cardWrap">
+  <div class="tag-hole"><div class="tag-hole-inner"></div></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="luggage-label">✦ Luggage Tag ✦</div>
+
+      <div class="avatar-ring">
+        <div class="avatar-inner">
+          <!-- Replace SVG below with: <img src="your-photo.jpg" alt="Deepak Krishna"> -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:42px;height:42px;color:rgba(255,255,255,0.28)">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="name-block">
+        <div class="name">Deepak Krishna</div>
+        <div class="name-sub">Owner &amp; Traveller</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info-list">
+
+      <a class="info-row"
+         href="https://maps.google.com/?q=1635/2,+2nd+Floor,+11th+Cross,+MKK+Road,+Mariyappanapalya,+Rajajinagar+2nd+Stage,+Bengaluru,+Karnataka+560021"
+         target="_blank" rel="noopener">
+        <div class="icon-wrap icon-address">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
+        </div>
+        <div class="info-text">
+          <div class="info-label">Home Address</div>
+          <div class="info-value">1635/2, Rajajinagar 2nd Stage, Bengaluru</div>
+        </div>
+        <div class="info-action">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+        </div>
+      </a>
+
+      <a class="info-row" href="tel:+919606713180">
+        <div class="icon-wrap icon-phone">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24 11.47 11.47 0 003.58.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.47 11.47 0 00.57 3.58 1 1 0 01-.24 1.01l-2.21 2.2z"/></svg>
+        </div>
+        <div class="info-text">
+          <div class="info-label">Phone</div>
+          <div class="info-value">+91 96067 13180</div>
+        </div>
+        <div class="info-action">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24 11.47 11.47 0 003.58.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.47 11.47 0 00.57 3.58 1 1 0 01-.24 1.01l-2.21 2.2z"/></svg>
+        </div>
+      </a>
+
+      <a class="info-row" href="tel:+919480489375">
+        <div class="icon-wrap icon-phone2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24 11.47 11.47 0 003.58.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.47 11.47 0 00.57 3.58 1 1 0 01-.24 1.01l-2.21 2.2z"/><path d="M19 3h-2v2h-2v2h2v2h2V7h2V5h-2V3z"/></svg>
+        </div>
+        <div class="info-text">
+          <div class="info-label">Alternate Phone</div>
+          <div class="info-value">+91 94804 89375</div>
+        </div>
+        <div class="info-action">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24 11.47 11.47 0 003.58.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.47 11.47 0 00.57 3.58 1 1 0 01-.24 1.01l-2.21 2.2z"/></svg>
+        </div>
+      </a>
+
+      <a class="info-row" href="https://wa.me/919844667500" target="_blank" rel="noopener">
+        <div class="icon-wrap icon-whatsapp">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm.01 18.14c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 01-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.2 8.2 0 012.41 5.83c-.02 4.54-3.72 8.23-8.23 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.16-.48-.28z"/></svg>
+        </div>
+        <div class="info-text">
+          <div class="info-label">WhatsApp</div>
+          <div class="info-value">+91 98446 67500</div>
+        </div>
+        <div class="info-action">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+        </div>
+      </a>
+
+      <a class="info-row"
+         href="mailto:deepakkrishna2206@gmail.com?subject=Found%20Your%20Luggage!&body=Hi%20Deepak%2C%20I%20found%20your%20luggage%20and%20wanted%20to%20get%20in%20touch.">
+        <div class="icon-wrap icon-email">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        </div>
+        <div class="info-text">
+          <div class="info-label">Email</div>
+          <div class="info-value">deepakkrishna2206@gmail.com</div>
+        </div>
+        <div class="info-action">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </div>
+      </a>
+
+    </div>
+    <div class="card-footer">If found, please reach out <span>♥</span></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   LAYER 1 — TEAL BASE + BLOB GLOW  (bgCanvas)
+═══════════════════════════════════════════════════════ */
+const bgCanvas   = document.getElementById('bgCanvas');
+const bgCtx      = bgCanvas.getContext('2d');
+const rainCanvas = document.getElementById('rainCanvas');
+const rCtx       = rainCanvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = bgCanvas.width  = rainCanvas.width  = window.innerWidth;
+  H = bgCanvas.height = rainCanvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* Soft glowing blob — just a big radial wash for depth */
+class GlowBlob {
+  constructor(colorStr, r, driftSpeed) {
+    this.color = colorStr;
+    this.r = r;
+    this.cx = Math.random() * W;
+    this.cy = Math.random() * H;
+    this.angle = Math.random() * Math.PI * 2;
+    this.orbitR = 80 + Math.random() * 120;
+    this.angSpeed = (0.0003 + Math.random() * 0.0004) * (Math.random() > .5 ? 1 : -1);
+    this.driftX = (Math.random() - 0.5) * driftSpeed;
+    this.driftY = (Math.random() - 0.5) * driftSpeed;
+  }
+  update() {
+    this.angle += this.angSpeed;
+    this.cx += this.driftX;
+    this.cy += this.driftY;
+    // Bounce softly at edges
+    if (this.cx < -200 || this.cx > W + 200) this.driftX *= -1;
+    if (this.cy < -200 || this.cy > H + 200) this.driftY *= -1;
+  }
+  get x() { return this.cx + Math.cos(this.angle) * this.orbitR; }
+  get y() { return this.cy + Math.sin(this.angle) * this.orbitR; }
+  draw(ctx) {
+    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+    g.addColorStop(0,   this.color);
+    g.addColorStop(0.5, this.color.replace(/[\d.]+\)$/, '0.18)'));
+    g.addColorStop(1,   this.color.replace(/[\d.]+\)$/, '0)'));
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+}
+
+const glowBlobs = [
+  new GlowBlob('rgba(0,200,180,0.38)',  420, 0.18),
+  new GlowBlob('rgba(0,160,200,0.30)',  380, 0.14),
+  new GlowBlob('rgba(20,220,200,0.25)', 300, 0.22),
+  new GlowBlob('rgba(0,180,160,0.28)',  350, 0.16),
+  new GlowBlob('rgba(10,140,180,0.22)', 280, 0.20),
+];
+
+function drawBg() {
+  /* Solid teal base — matching the PNG's #1ec8c0 hue */
+  bgCtx.fillStyle = '#12b5ae';
+  bgCtx.fillRect(0, 0, W, H);
+
+  bgCtx.globalCompositeOperation = 'screen';
+  for (const b of glowBlobs) { b.update(); b.draw(bgCtx); }
+
+  /* Gentle vignette for depth */
+  bgCtx.globalCompositeOperation = 'source-over';
+  const vg = bgCtx.createRadialGradient(W/2, H/2, H*0.15, W/2, H/2, H*0.9);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,30,30,0.45)');
+  bgCtx.fillStyle = vg;
+  bgCtx.fillRect(0, 0, W, H);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAYER 2 — ANIMATED RAIN STREAKS  (rainCanvas)
+   Mimics the loading.io tile exactly:
+   - Angle: ~-40° (top-right to bottom-left fall)
+   - Two types: bright white and bright cyan
+   - Varying length (16–60px) and opacity
+   - Streaks scroll continuously down-right then wrap
+═══════════════════════════════════════════════════════ */
+/* Streak definition — fixed tile-space position, animated offset */
+const ANGLE_RAD = (-40 * Math.PI) / 180; // ~-40 degrees
+const cos = Math.cos(ANGLE_RAD);
+const sin = Math.sin(ANGLE_RAD);
+
+/* Speed: pixels per frame along the fall direction */
+const FALL_SPEED = 1.4;
+
+const TILE = 164;
+
+/* Build a grid of streaks that tiles the screen */
+function buildStreaks() {
+  const streaks = [];
+  /* We place them in a virtual 164×164 tile (matching the PNG),
+     then repeat the tile to fill the screen + bleed */
+  const cols = Math.ceil((W + TILE * 4) / TILE) + 1;
+  const rows = Math.ceil((H + TILE * 4) / TILE) + 1;
+
+  /* Streak positions within one tile — measured from the PNG visually */
+  const template = [
+    // [tx, ty, length, lineWidth, type]  type 0=white, 1=cyan
+    { tx: 20,  ty: 30,  len: 44, lw: 3.5, type: 0, alpha: 0.85 },
+    { tx: 70,  ty: 10,  len: 24, lw: 2.5, type: 1, alpha: 0.70 },
+    { tx: 120, ty: 50,  len: 16, lw: 2,   type: 1, alpha: 0.55 },
+    { tx: 40,  ty: 90,  len: 32, lw: 3,   type: 0, alpha: 0.65 },
+    { tx: 100, ty: 80,  len: 52, lw: 4,   type: 0, alpha: 0.90 },
+    { tx: 150, ty: 20,  len: 20, lw: 2,   type: 1, alpha: 0.50 },
+    { tx: 10,  ty: 130, len: 28, lw: 2.5, type: 1, alpha: 0.60 },
+    { tx: 80,  ty: 140, len: 18, lw: 2,   type: 1, alpha: 0.45 },
+    { tx: 140, ty: 120, len: 38, lw: 3,   type: 0, alpha: 0.75 },
+    { tx: 55,  ty: 60,  len: 14, lw: 1.5, type: 1, alpha: 0.40 },
+    { tx: 130, ty: 100, len: 22, lw: 2,   type: 1, alpha: 0.55 },
+  ];
+
+  for (let col = -2; col < cols; col++) {
+    for (let row = -2; row < rows; row++) {
+      for (const t of template) {
+        streaks.push({
+          baseX: col * TILE + t.tx,
+          baseY: row * TILE + t.ty,
+          len:   t.len,
+          lw:    t.lw,
+          type:  t.type,
+          color: t.type === 0 ? 'rgba(255,255,255,' : 'rgba(0,240,255,',
+          alpha: t.alpha,
+          phase: Math.random() * 200,
+        });
+      }
+    }
+  }
+  return streaks;
+}
+
+let streaks = buildStreaks();
+window.addEventListener('resize', () => { streaks = buildStreaks(); });
+
+/* Independent offsets per type — white faster, cyan slower */
+const WHITE_SPEED = 2.2;
+const CYAN_SPEED  = 0.8;
+let wOffX = 0, wOffY = 0;   // white offset
+let cOffX = 0, cOffY = 0;   // cyan offset
+
+function drawRain() {
+  rCtx.clearRect(0, 0, W, H);
+
+  /* Advance offsets independently — top-right to bottom-left */
+  wOffX -= WHITE_SPEED * Math.abs(cos) * 0.5;
+  wOffY += WHITE_SPEED * Math.abs(sin) * 0.9;
+  if (wOffX < -TILE) wOffX += TILE;
+  if (wOffY >  TILE) wOffY -= TILE;
+
+  cOffX -= CYAN_SPEED * Math.abs(cos) * 0.5;
+  cOffY += CYAN_SPEED * Math.abs(sin) * 0.9;
+  if (cOffX < -TILE) cOffX += TILE;
+  if (cOffY >  TILE) cOffY -= TILE;
+
+  rCtx.save();
+  rCtx.lineCap = 'round';
+
+  for (const s of streaks) {
+    const ox = s.type === 0 ? wOffX : cOffX;
+    const oy = s.type === 0 ? wOffY : cOffY;
+    const x  = s.baseX + ox;
+    const y  = s.baseY + oy;
+
+    const hx = cos * s.len / 2;
+    const hy = sin * s.len / 2;
+
+    rCtx.beginPath();
+    rCtx.moveTo(x - hx, y - hy);
+    rCtx.lineTo(x + hx, y + hy);
+    rCtx.lineWidth   = s.lw;
+    rCtx.strokeStyle = s.color + s.alpha + ')';
+    rCtx.stroke();
+  }
+
+  rCtx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAIN LOOP
+═══════════════════════════════════════════════════════ */
+function loop() {
+  drawBg();
+  drawRain();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ── Subtle card tilt on mouse move ── */
+const cardWrap = document.getElementById('cardWrap');
+document.addEventListener('mousemove', e => {
+  const dx = (e.clientX - W/2) / (W/2);
+  const dy = (e.clientY - H/2) / (H/2);
+  cardWrap.style.transform = `perspective(900px) rotateY(${dx*5}deg) rotateX(${-dy*5}deg)`;
+});
+document.addEventListener('mouseleave', () => {
+  cardWrap.style.transform = 'perspective(900px) rotateY(0) rotateX(0)';
+});
+</script>
+</body>
+</html>
